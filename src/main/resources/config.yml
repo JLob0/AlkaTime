@@ -1,0 +1,31 @@
+# Configuracao do AlkaTime
+
+# A cada quantos minutos o tempo de todos os jogadores online e salvo no banco
+# (alem do save automatico no quit/onDisable) - protege contra crash do servidor.
+autosave-interval-minutes: 5
+
+# Moeda da AlkaEconomy usada nas recompensas padrao (ver rewards.yml). Precisa ser
+# um id valido registrado no config.yml da AlkaEconomy (ex: ticks, coins, drakonio).
+default-currency: ticks
+
+menu:
+  tempo-title: "<gradient:#55FFAA:#00AA55><bold>Seu Tempo Online</bold></gradient>"
+  tempo-rows: 3
+  top-title: "<gradient:#FFAA00:#FFE055><bold>TOP Tempo Online</bold></gradient>"
+  top-rows: 6
+  top-limit: 50
+
+npc:
+  name: "<yellow><bold>⏱ Tempo Online"
+  skin: "MestreDEV"
+
+hologram:
+  enabled: true
+  # Aplica ao DecentHolograms, que so entende codigo & legado, nunca MiniMessage
+  # (mesma excecao ja documentada no HologramManager do AlkaMines).
+  lines:
+    - "&8&m━━━━━━━━━━━━━━━"
+    - "&e&l⏱ TOP 1 Tempo Online"
+    - "&f%top_1_player%"
+    - "&7%top_1_value%"
+    - "&8&m━━━━━━━━━━━━━━━"

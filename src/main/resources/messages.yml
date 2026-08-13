@@ -1,0 +1,40 @@
+prefix: "<gray>[<gradient:#55FFAA:#00AA55>AlkaTime</gradient>]</gray> "
+
+erro:
+  apenas-jogador: "<red>Apenas jogadores podem usar esse comando."
+  sem-permissao: "<red>Voce nao tem permissao para isso."
+  jogador-nao-encontrado: "<red>Jogador nao encontrado."
+  jogador-nunca-entrou: "<red>Esse jogador nunca entrou no servidor."
+  uso-invalido: "<red>Uso: <white><uso>"
+  numero-invalido: "<red><valor> nao e um numero valido."
+
+consulta:
+  tempo-de-outro: "<yellow><jogador> jogou por <white><tempo></white> no servidor."
+
+recompensa:
+  invalida: "<red>Voce ainda nao tem tempo suficiente para essa recompensa."
+  ja-coletada: "<yellow>Voce ja coletou essa recompensa."
+  coletada: "<green>Voce recebeu <white><amount> <currency></white> por jogar <white><tempo></white>!"
+
+admin:
+  reload-sucesso: "<green>Configuracoes do AlkaTime recarregadas."
+  set-sucesso: "<green>Tempo de <white><jogador></white> definido para <white><tempo></white>."
+  add-sucesso: "<green>Adicionado <white><tempo></white> ao tempo de <white><jogador></white>."
+  remove-sucesso: "<green>Removido <white><tempo></white> do tempo de <white><jogador></white>."
+  reset-sucesso: "<green>Tempo de <white><jogador></white> resetado."
+  npc-setado: "<green>NPC do AlkaTime criado nesta posicao."
+  npc-deletado: "<green>NPC do AlkaTime removido."
+  npc-inexistente: "<red>Nao ha nenhum NPC do AlkaTime configurado."
+  npc-indisponivel: "<red>O Citizens nao esta instalado - nao e possivel criar o NPC."
+
+menu:
+  tempo-jogado-nome: "<yellow>Tempo jogado: <white><tempo>"
+  tempo-jogado-lore:
+    - "<gray>Voce jogou por <white><tempo></white> no servidor."
+    - "<green>Continue jogando para ganhar recompensas!"
+  voltar: "<gray>← Voltar"
+  top-item-nome: "<gold>#<posicao> <white><jogador>"
+  top-item-lore:
+    - "<gray>Tempo online: <white><tempo>"
+  top-vazio: "<gray>Ainda ninguem no ranking."
+  ver-top: "<yellow>Ver TOP de tempo online"

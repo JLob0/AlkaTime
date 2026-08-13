@@ -1,0 +1,38 @@
+name: AlkaTime
+version: '${version}'
+main: com.alkacode.time.AlkaTimePlugin
+api-version: '1.21'
+author: MestreDEV
+description: Contagem de tempo online, missoes de recompensa e ranking de tempo jogado. Sobre o AlkaCore (banco/HikariCP, GUI) e AlkaEconomy (moeda ticks).
+depend: [AlkaCore, AlkaEconomy]
+softdepend: [PlaceholderAPI, Citizens, DecentHolograms]
+
+commands:
+  tempo:
+    description: Ve seu tempo jogado e reivindica recompensas
+    usage: /<command> [top|jogador]
+    permission: alkatime.usar
+  alkatime:
+    description: Comandos administrativos do AlkaTime
+    usage: /<command> <setnpc|delnpc|reload|set|add|remove|reset>
+    permission: alkatime.admin
+
+permissions:
+  alkatime.usar:
+    description: Permite usar /tempo.
+    default: true
+  alkatime.top:
+    description: Permite usar /tempo top.
+    default: true
+  alkatime.look.others:
+    description: Permite ver o tempo de outro jogador (/tempo <jogador>).
+    default: op
+  alkatime.veroff:
+    description: Permite ver o tempo de jogadores offline.
+    default: op
+  alkatime.admin:
+    description: Acesso administrativo completo ao AlkaTime.
+    default: op
+  alkatime.bypass:
+    description: Jogador com essa permissao nao acumula tempo online.
+    default: false

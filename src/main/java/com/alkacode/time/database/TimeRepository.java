@@ -1,0 +1,181 @@
+package com.alkacode.time.database;
+
+import com.alkacode.core.api.DatabaseProvider;
+import com.alkacode.core.database.AbstractRepository;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+/**
+ * Unico ponto de acesso ao banco do AlkaTime, sobre o {@link DatabaseProvider} do
+ * AlkaCore (R2 - zero HikariConfig/JDBC proprio). Todas as chamadas aqui sao
+ * bloqueantes de proposito (mesmo padrao de EnderChestRepository/EconomyManager) -
+ * quem chama e responsavel por rodar fora da main thread (R7), ver
+ * {@link com.alkacode.time.manager.PlayerTimeManager} e o AlkaScheduler do Core.
+ */
+public final class TimeRepository extends AbstractRepository {
+
+    private final Logger logger;
+
+    public TimeRepository(DatabaseProvider db, Logger logger) {
+        super(db);
+        this.logger = logger;
+        createTable();
+    }
+
+    private void createTable() {
+        try (Connection conn = db.getConnection(); var stmt = conn.createStatement()) {
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS alka_time_data (
+                        player_uuid VARCHAR(36) PRIMARY KEY,
+                        player_name VARCHAR(16),
+                        total_seconds BIGINT DEFAULT 0,
+                        claimed_rewards TEXT
+                    )
+                    """);
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Erro ao criar tabela alka_time_data", e);
+        }
+    }
+
+    // -------------------------------------------------------------- tempo total
+
+    public long getTotalSeconds(UUID uuid) {
+        String sql = "SELECT total_seconds FROM alka_time_data WHERE player_uuid = ?";
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getLong("total_seconds") : 0L;
+            }
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Erro ao ler tempo total de " + uuid, e);
+            return 0L;
+        }
+    }
+
+    /** Upsert do total de segundos - tambem atualiza player_name pra telas de TOP/admin nao depender de resolver OfflinePlayer toda hora. */
+    public void saveTotalSeconds(UUID uuid, String playerName, long totalSeconds) {
+        String sql = upsert("alka_time_data",
+                new String[]{"player_uuid", "player_name", "total_seconds"},
+                new String[]{"player_uuid"});
+        try {
+            execute(sql, ps -> {
+                ps.setString(1, uuid.toString());
+                ps.setString(2, playerName);
+                ps.setLong(3, totalSeconds);
+            });
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Erro ao salvar tempo total de " + uuid, e);
+        }
+    }
+
+    // ------------------------------------------------------------- recompensas
+
+    public Set<Integer> getClaimedRewards(UUID uuid) {
+        String sql = "SELECT claimed_rewards FROM alka_time_data WHERE player_uuid = ?";
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return new HashSet<>();
+                }
+                String raw = rs.getString("claimed_rewards");
+                return parseClaimed(raw);
+            }
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Erro ao ler recompensas coletadas de " + uuid, e);
+            return new HashSet<>();
+        }
+    }
+
+    public void addClaimedReward(UUID uuid, int seconds) {
+        Set<Integer> claimed = getClaimedRewards(uuid);
+        claimed.add(seconds);
+        String csv = joinClaimed(claimed);
+        ensureRow(uuid);
+        String sql = "UPDATE alka_time_data SET claimed_rewards = ? WHERE player_uuid = ?";
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, csv);
+            ps.setString(2, uuid.toString());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Erro ao salvar recompensa coletada de " + uuid, e);
+        }
+    }
+
+    private void ensureRow(UUID uuid) {
+        String sql = "SELECT 1 FROM alka_time_data WHERE player_uuid = ?";
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return;
+                }
+            }
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Erro ao verificar linha de " + uuid, e);
+            return;
+        }
+        try (Connection conn = db.getConnection();
+             PreparedStatement ps = conn.prepareStatement("INSERT INTO alka_time_data (player_uuid) VALUES (?)")) {
+            ps.setString(1, uuid.toString());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Erro ao criar linha de " + uuid, e);
+        }
+    }
+
+    private Set<Integer> parseClaimed(String raw) {
+        Set<Integer> result = new HashSet<>();
+        if (raw == null || raw.isBlank()) {
+            return result;
+        }
+        for (String part : raw.split(",")) {
+            if (!part.isBlank()) {
+                result.add(Integer.parseInt(part.trim()));
+            }
+        }
+        return result;
+    }
+
+    private String joinClaimed(Set<Integer> claimed) {
+        List<Integer> sorted = new ArrayList<>(claimed);
+        sorted.sort(null);
+        return String.join(",", sorted.stream().map(String::valueOf).toList());
+    }
+
+    // -------------------------------------------------------------------- top
+
+    public record TopEntry(UUID uuid, String name, long totalSeconds) {
+    }
+
+    /** Le direto do banco (nao do cache em memoria) - reflete tambem jogadores offline. Chamada bloqueante de proposito, mesmo padrao de EconomyManager#getTopBalances. */
+    public List<TopEntry> getTopEntries(int limit) {
+        String sql = "SELECT player_uuid, player_name, total_seconds FROM alka_time_data ORDER BY total_seconds DESC LIMIT ?";
+        List<TopEntry> result = new ArrayList<>();
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String name = rs.getString("player_name");
+                    result.add(new TopEntry(
+                            UUID.fromString(rs.getString("player_uuid")),
+                            name != null ? name : "???",
+                            rs.getLong("total_seconds")));
+                }
+            }
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Erro ao ler TOP de tempo online", e);
+        }
+        return result;
+    }
+}

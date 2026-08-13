@@ -1,0 +1,63 @@
+# Missoes de tempo online do AlkaTime - crie quantas quiser, uma chave por
+# quantidade de segundos necessaria. "comandos" e opcional, roda via console
+# ALEM da moeda (currency/amount) - deixe [] se so quiser a moeda.
+missoes:
+  "1800": # 30 minutos
+    slot: 10
+    material: IRON_INGOT
+    name: "<white>Recompensa de 30 minutos"
+    lore:
+      - "<gray>Jogue por 30 minutos e colete!"
+    currency: ticks
+    amount: 50
+    comandos: []
+
+  "3600": # 1 hora
+    slot: 11
+    material: GOLD_INGOT
+    name: "<gold>Recompensa de 1 hora"
+    lore:
+      - "<gray>Jogue por 1 hora e colete!"
+    currency: ticks
+    amount: 100
+    comandos: []
+
+  "7200": # 2 horas
+    slot: 12
+    material: DIAMOND
+    name: "<aqua>Recompensa de 2 horas"
+    lore:
+      - "<gray>Jogue por 2 horas e colete!"
+    currency: ticks
+    amount: 250
+    comandos: []
+
+  "14400": # 4 horas
+    slot: 13
+    material: EMERALD
+    name: "<green>Recompensa de 4 horas"
+    lore:
+      - "<gray>Jogue por 4 horas e colete!"
+    currency: ticks
+    amount: 600
+    comandos: []
+
+  "28800": # 8 horas
+    slot: 14
+    material: NETHERITE_INGOT
+    name: "<dark_purple>Recompensa de 8 horas"
+    lore:
+      - "<gray>Jogue por 8 horas e colete!"
+    currency: ticks
+    amount: 1500
+    comandos: []
+
+  "86400": # 24 horas
+    slot: 15
+    material: NETHER_STAR
+    name: "<gradient:#FF4500:#8B0000>Recompensa de 24 horas</gradient>"
+    lore:
+      - "<gray>Jogue por 24 horas e colete!"
+    currency: ticks
+    amount: 5000
+    comandos: []
