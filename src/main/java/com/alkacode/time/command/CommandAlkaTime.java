@@ -11,10 +11,15 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public final class CommandAlkaTime implements CommandExecutor {
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
+
+public final class CommandAlkaTime implements CommandExecutor, TabCompleter {
 
     private final JavaPlugin plugin;
     private final PlayerTimeManager timeManager;
@@ -143,5 +148,25 @@ public final class CommandAlkaTime implements CommandExecutor {
             return null;
         }
         return target;
+    }
+
+    private static final List<String> SUBCOMMANDS = List.of("setnpc", "delnpc", "reload", "set", "add", "remove", "reset");
+    private static final List<String> PLAYER_ARG_SUBCOMMANDS = List.of("set", "add", "remove", "reset");
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length == 1) {
+            return filter(SUBCOMMANDS, args[0]);
+        }
+        if (args.length == 2 && PLAYER_ARG_SUBCOMMANDS.contains(args[0].toLowerCase(Locale.ROOT))) {
+            List<String> names = Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList());
+            return filter(names, args[1]);
+        }
+        return List.of();
+    }
+
+    private List<String> filter(List<String> options, String prefix) {
+        String lower = prefix.toLowerCase(Locale.ROOT);
+        return options.stream().filter(o -> o.toLowerCase(Locale.ROOT).startsWith(lower)).collect(Collectors.toList());
     }
 }

@@ -14,10 +14,15 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public final class CommandTempo implements CommandExecutor {
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
+
+public final class CommandTempo implements CommandExecutor, TabCompleter {
 
     private final JavaPlugin plugin;
     private final PlayerTimeManager timeManager;
@@ -104,5 +109,18 @@ public final class CommandTempo implements CommandExecutor {
                         "consulta.tempo-de-outro",
                         "<jogador>", target.getName() != null ? target.getName() : targetName,
                         "<tempo>", TimeFormatter.format(seconds)))));
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length != 1 || !(sender instanceof Player player)) {
+            return List.of();
+        }
+        List<String> options = Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList());
+        if (player.hasPermission("alkatime.top")) {
+            options.add("top");
+        }
+        String lower = args[0].toLowerCase(Locale.ROOT);
+        return options.stream().filter(o -> o.toLowerCase(Locale.ROOT).startsWith(lower)).collect(Collectors.toList());
     }
 }

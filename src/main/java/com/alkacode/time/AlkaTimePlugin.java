@@ -57,13 +57,16 @@ public final class AlkaTimePlugin extends AlkaPlugin {
 
         CommandTempo commandTempo = new CommandTempo(this, timeManager, rewardManager, repository, api.getScheduler(), economyService, messages);
         getCommand("tempo").setExecutor(commandTempo);
+        getCommand("tempo").setTabCompleter(commandTempo);
 
         CitizensHook citizensHook = new CitizensHook(this);
         DecentHologramsHook hologramHook = new DecentHologramsHook(this);
         npcManager = new TimeNpcManager(this, citizensHook, hologramHook, commandTempo::openTimeMenu);
         getServer().getPluginManager().registerEvents(npcManager, this);
 
-        getCommand("alkatime").setExecutor(new CommandAlkaTime(this, timeManager, rewardManager, npcManager, messages));
+        CommandAlkaTime commandAlkaTime = new CommandAlkaTime(this, timeManager, rewardManager, npcManager, messages);
+        getCommand("alkatime").setExecutor(commandAlkaTime);
+        getCommand("alkatime").setTabCompleter(commandAlkaTime);
 
         getServer().getServicesManager().register(AlkaTimeAPI.class, new AlkaTimeAPIProvider(timeManager), this, ServicePriority.Normal);
 
