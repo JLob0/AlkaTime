@@ -1,66 +1,98 @@
 # AlkaTime
 
-Contagem de tempo online, missões de recompensa e ranking de tempo jogado para a
-rede Alka* (Paper 1.21.8 / Java 21) — construído sobre o AlkaCore (banco/GUI
-compartilhados) e a AlkaEconomy (moeda `ticks`).
+> Tempo é recompensa. Contagem de tempo online, missões e ranking pra rede Alka*.
 
-## O que faz
+![Java](https://img.shields.io/badge/Java-21-orange)
+![Minecraft](https://img.shields.io/badge/Minecraft-1.21.8-green)
+![Version](https://img.shields.io/badge/Version-1.0.2-blue)
+![License](https://img.shields.io/badge/License-Proprietary-red)
 
-- **Contador 100% assíncrono** (`PlayerTimeManager`): cada jogador tem um
-  `baseline` (total persistido antes da sessão atual) + `sessionStart`, e o
-  tempo "ao vivo" é sempre `baseline + (agora - sessionStart)`, nunca uma
-  query nova no banco. O carregamento inicial do `baseline` só libera o
-  `sessionStart` depois de terminar (os dois writes acontecem na mesma task
-  assíncrona, em sequência) — elimina qualquer corrida entre esse load e um
-  autosave/quit que tentasse persistir um total incompleto.
-- **Autosave periódico** (`autosave-interval-minutes` no `config.yml`) — protege
-  contra crash do processo sem depender só do quit. Salva também de forma
-  síncrona e bloqueante no `onDisable`, antes do AlkaCore fechar o pool de
-  conexões.
-- **Missões infinitas de recompensa** (`rewards.yml`) — uma seção por
-  quantidade de segundos necessária, quantas o admin quiser. Cada missão paga
-  uma moeda da AlkaEconomy (padrão `ticks`, reservada para tempo online) mais
-  uma lista opcional de comandos extras via console.
-- **Menu principal** (`/tempo`, `BaseGui` do AlkaCore) — tempo jogado + grade
-  de missões (bloqueada/disponível/coletada) + botão pro TOP.
-- **TOP de tempo online** (`/tempo top`) — ranking paginado, lido direto do
-  banco (reflete jogadores offline também), com botão "Voltar" pro menu
-  principal.
-- **NPC configurável** (`/alkatime setnpc`/`delnpc`) via **Citizens**
-  (soft-dependency, 100% via reflexão — sem artefato Maven público confiável)
-  com **holograma opcional** via **DecentHolograms** (soft-dependency,
-  `compileOnly` direto via DHAPI — mesmo hologram plugin já usado pelo
-  AlkaMines na rede) mostrando o TOP 1 atualizado no mesmo ciclo do autosave.
-- **API pública** (`AlkaTimeAPI`, registrada no `ServicesManager`,
-  `CompletableFuture<Long> getOnlineSeconds(UUID)`) — bate exatamente com o
-  hook de reflexão que o AlkaRankUp já tinha escrito (`TimeHook`) esperando
-  este plugin nascer, para o requisito `online_time` dos ranks.
-- **Comandos**: `/tempo` (+`top`, +`<jogador>`, PT-BR) para jogador;
-  `/alkatime setnpc|delnpc|reload|set|add|remove|reset` (inglês, admin) —
-  `set`/`add`/`remove` aceitam tanto segundos puros ("3600") quanto formato
-  composto ("1h30m", "2d").
-- **PlaceholderAPI** (`alkatime`): `%alkatime_tempo%`, `%alkatime_tempo_raw%`,
-  `%alkatime_horas%`, `%alkatime_top_player_<n>%`, `%alkatime_top_value_<n>%`
-  — os placeholders de TOP leem de um cache em memória, nunca consultam o
-  banco na hora do request (PAPI pode chamar isso de qualquer thread).
+---
 
-## Dependências
+## 📋 Sobre o Projeto
 
-- **AlkaCore** (hard dependency) — banco de dados (HikariCP/SQLite/MySQL) e
-  sistema de GUI compartilhados. AlkaTime não abre conexão JDBC própria.
-- **AlkaEconomy** (hard dependency) — moeda das recompensas de tempo.
-- PlaceholderAPI, Citizens e DecentHolograms são soft-dependencies opcionais.
+O **AlkaTime** acompanha o tempo que cada jogador passa online e transforma
+isso em recompensa: missões de tempo pagam moedas e comandos configuráveis, um
+ranking mostra quem mais joga na rede, e tudo isso com uma contagem em tempo
+real que nunca depende de consultas repetidas ao banco.
 
-## Origem
+## ✨ Funcionalidades Principais
 
-Reconstruído do zero a partir de duas referências: o plugin antigo `KTempo`
-(contagem de sessão + menu de recompensas em YAML puro) e uma descrição de um
-plugin de terceiros ("yTempoOnline") usada só como inspiração de features —
-nenhum dos dois foi copiado; tudo foi reescrito sobre a arquitetura do
-AlkaCore (`BaseGui`, `AbstractRepository`, `AlkaScheduler`, MiniMessage).
+- ⏱️ **Contador em tempo real** — o tempo online é calculado ao vivo, sem
+  travar o servidor com consultas constantes ao banco.
+- 🎁 **Missões de recompensa infinitas** — configure quantas quiser, cada uma
+  pagando moeda e/ou comandos ao ser atingida.
+- 🖼️ **Menu completo** (`/tempo`) — tempo jogado, grade de missões e acesso
+  direto ao ranking.
+- 🏆 **Ranking de tempo online** (`/tempo top`) — paginado, considera até
+  jogadores offline.
+- 🧍 **NPC configurável** via Citizens, com holograma opcional mostrando o
+  TOP 1 atualizado.
+- 💾 **Autosave periódico** — protegido contra queda do servidor.
+- 🔤 **PlaceholderAPI completo** — tempo formatado, horas, e placeholders de
+  ranking prontos pra scoreboard/chat.
 
-## Débitos conhecidos
+## 🎮 Comandos
 
-- Sem testes em servidor real ainda.
-- `/tempo top` e o holograma do NPC limitam a exibição ao tamanho do menu/lista
-  configurada — não há paginação além do primeiro "page" do TOP.
+| Comando | Descrição | Permissão |
+| --- | --- | --- |
+| `/tempo` | Mostra seu tempo jogado e as missões disponíveis | `alkatime.usar` |
+| `/tempo top` | Abre o ranking de tempo online | `alkatime.top` |
+| `/tempo <jogador>` | Vê o tempo de outro jogador | `alkatime.look.others` |
+| `/alkatime setnpc` \| `delnpc` | Define/remove o NPC de tempo online | `alkatime.admin` |
+| `/alkatime reload` | Recarrega as configurações | `alkatime.admin` |
+| `/alkatime set` \| `add` \| `remove` \| `reset` | Ajusta o tempo de um jogador manualmente | `alkatime.admin` |
+
+## 🔗 Integrações
+
+Construído sobre o **AlkaCore** (banco e GUI) e a **AlkaEconomy** (moeda
+`ticks` das recompensas). Suporte opcional a **PlaceholderAPI**, **Citizens**
+(NPC) e **DecentHolograms** (holograma do TOP 1). Expõe uma API pública
+(`AlkaTimeAPI`) consumida pelo **AlkaRankUp** para ranks com requisito de
+tempo online.
+
+## 🔧 Tecnologias Utilizadas
+
+- **Java 21** · **Paper API 1.21.8**
+- **AlkaCore** (banco de dados e GUI compartilhados)
+- **MiniMessage** para todas as mensagens
+
+## ⚙️ Instalação
+
+1. Baixe a versão mais recente do plugin.
+2. Coloque o `.jar` na pasta `plugins/` do servidor.
+3. Certifique-se de ter o **AlkaCore** e a **AlkaEconomy** instalados
+   (dependências obrigatórias).
+4. Reinicie o servidor e configure `plugins/AlkaTime/rewards.yml` com suas
+   missões de recompensa.
+
+## 🔐 Permissões
+
+- `alkatime.usar` — usar `/tempo` (padrão: `true`)
+- `alkatime.top` — usar `/tempo top` (padrão: `true`)
+- `alkatime.look.others` — ver o tempo de outro jogador (padrão: `op`)
+- `alkatime.veroff` — ver tempo de jogadores offline (padrão: `op`)
+- `alkatime.bypass` — não acumula tempo online (padrão: `false`)
+- `alkatime.admin` — acesso administrativo completo (padrão: `op`)
+
+## 📝 Licença
+
+> ⚠️ **Projeto proprietário da AlkaStudio.**
+>
+> Código fonte destinado exclusivamente ao uso interno da rede `Alka*`.
+> Reprodução, distribuição ou uso não autorizado não são permitidos.
+
+## 🎯 Créditos
+
+- **Desenvolvido por**: MestreDEV — AlkaStudio
+- **Parte do ecossistema**: `Alka*`
+
+---
+
+<div align="center">
+
+**Desenvolvido com ❤️ pela AlkaStudio**
+
+[![AlkaStudio](https://img.shields.io/badge/AlkaStudio-JLob0-blue)](https://github.com/JLob0)
+
+</div>
