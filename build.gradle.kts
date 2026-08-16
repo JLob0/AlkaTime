@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.alkacode"
-version = "1.0.2"
+version = "1.1.0"
 
 java {
     toolchain {
@@ -27,7 +27,7 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
     // banco/HikariCP e GUI base vem do AlkaCore (DatabaseProvider/BaseGui) - AlkaTime
     // nao abre conexao JDBC propria nem registra o proprio GuiListener.
-    compileOnly("com.alkacode:AlkaCore:1.0.2")
+    compileOnly("com.alkacode:AlkaCore:1.0.3")
     // moeda "ticks" das recompensas de tempo online vem da AlkaEconomy (EconomyManager).
     compileOnly("com.alkacode:AlkaEconomy:1.0.6")
     compileOnly("me.clip:placeholderapi:2.11.6")
@@ -57,5 +57,9 @@ tasks.build {
 tasks.processResources {
     filteringCharset = "UTF-8"
     inputs.property("version", project.version)
-    expand("version" to project.version)
+    filesMatching("plugin.yml") {
+
+        expand("version" to project.version)
+
+    }
 }
