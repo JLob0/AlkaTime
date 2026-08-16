@@ -1,11 +1,17 @@
+<div align="center">
+
 # AlkaTime
 
-> Tempo é recompensa. Contagem de tempo online, missões e ranking pra rede Alka*.
+### Tempo é recompensa
+
+Contagem de tempo online, missões de recompensa e ranking pra rede Alka*.
 
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Minecraft](https://img.shields.io/badge/Minecraft-1.21.8-green)
 ![Version](https://img.shields.io/badge/Version-1.0.2-blue)
 ![License](https://img.shields.io/badge/License-Proprietary-red)
+
+</div>
 
 ---
 
