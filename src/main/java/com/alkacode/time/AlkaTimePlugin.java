@@ -11,6 +11,7 @@ import com.alkacode.time.database.TimeRepository;
 import com.alkacode.time.hook.CitizensHook;
 import com.alkacode.time.hook.DecentHologramsHook;
 import com.alkacode.time.listener.PlayerTimeListener;
+import com.alkacode.time.manager.DailyRewardManager;
 import com.alkacode.time.manager.PlayerTimeManager;
 import com.alkacode.time.manager.RewardManager;
 import com.alkacode.time.manager.TimeEconomyService;
@@ -31,10 +32,12 @@ import org.bukkit.plugin.ServicePriority;
 public final class AlkaTimePlugin extends AlkaPlugin {
 
     private PlayerTimeManager timeManager;
-    private RewardManager rewardManager;
+    private RewardManager milestoneManager;
+    private DailyRewardManager dailyRewardManager;
     private TimeNpcManager npcManager;
     private AlkaTimeExpansion papiExpansion;
     private TimeRepository repository;
+    private String lastKnownDate;
 
     @Override
     protected void onPluginEnable() {
@@ -51,11 +54,13 @@ public final class AlkaTimePlugin extends AlkaPlugin {
         timeManager = new PlayerTimeManager(repository, api.getScheduler(), getLogger());
         TimeEconomyService economyService = new TimeEconomyService(alkaEconomy.getEconomyManager());
         String defaultCurrency = getConfig().getString("default-currency", "ticks");
-        rewardManager = new RewardManager(this, repository, api.getScheduler(), timeManager, economyService, defaultCurrency);
+        milestoneManager = new RewardManager(this, "milestones.yml", repository, api.getScheduler(), timeManager, economyService, defaultCurrency);
+        dailyRewardManager = new DailyRewardManager(this, repository, api.getScheduler(), timeManager, economyService, defaultCurrency);
+        lastKnownDate = PlayerTimeManager.today();
 
-        getServer().getPluginManager().registerEvents(new PlayerTimeListener(timeManager, rewardManager), this);
+        getServer().getPluginManager().registerEvents(new PlayerTimeListener(timeManager, milestoneManager, dailyRewardManager), this);
 
-        CommandTempo commandTempo = new CommandTempo(this, timeManager, rewardManager, repository, api.getScheduler(), economyService, messages);
+        CommandTempo commandTempo = new CommandTempo(this, timeManager, dailyRewardManager, milestoneManager, repository, api.getScheduler(), economyService, messages);
         getCommand("tempo").setExecutor(commandTempo);
         getCommand("tempo").setTabCompleter(commandTempo);
 
@@ -64,7 +69,7 @@ public final class AlkaTimePlugin extends AlkaPlugin {
         npcManager = new TimeNpcManager(this, citizensHook, hologramHook, commandTempo::openTimeMenu);
         getServer().getPluginManager().registerEvents(npcManager, this);
 
-        CommandAlkaTime commandAlkaTime = new CommandAlkaTime(this, timeManager, rewardManager, npcManager, messages);
+        CommandAlkaTime commandAlkaTime = new CommandAlkaTime(this, timeManager, milestoneManager, dailyRewardManager, npcManager, messages);
         getCommand("alkatime").setExecutor(commandAlkaTime);
         getCommand("alkatime").setTabCompleter(commandAlkaTime);
 
@@ -78,7 +83,8 @@ public final class AlkaTimePlugin extends AlkaPlugin {
         // cobre o caso de /reload do servidor - sem isso, jogadores ja online nunca teriam
         // sessao iniciada ate o proximo join/quit (ver feedback-reload-must-verify-propagation).
         for (Player player : getServer().getOnlinePlayers()) {
-            rewardManager.onJoin(player.getUniqueId());
+            milestoneManager.onJoin(player.getUniqueId());
+            dailyRewardManager.onJoin(player.getUniqueId());
             if (!player.hasPermission("alkatime.bypass")) {
                 timeManager.onJoin(player);
             }
@@ -93,6 +99,7 @@ public final class AlkaTimePlugin extends AlkaPlugin {
 
     private void periodicTask() {
         timeManager.autosaveAll();
+        checkDailyRollover();
         int limit = Math.max(getConfig().getInt("menu.top-limit", 50), 10);
         var top = repository.getTopEntries(limit);
         Bukkit.getScheduler().runTask(this, () -> {
@@ -100,6 +107,24 @@ public final class AlkaTimePlugin extends AlkaPlugin {
             if (papiExpansion != null) {
                 papiExpansion.updateTopCache(top);
             }
+        });
+    }
+
+    /** Detecta a virada do dia (checado a cada autosave-interval-minutes) e reseta o
+     * contador/claim diario de quem esta online agora - jogadores offline se
+     * autocuram sozinhos no proximo join (ver TimeRepository#getDailyState). */
+    private void checkDailyRollover() {
+        String today = PlayerTimeManager.today();
+        if (today.equals(lastKnownDate)) {
+            return;
+        }
+        lastKnownDate = today;
+        Bukkit.getScheduler().runTask(this, () -> {
+            for (Player player : getServer().getOnlinePlayers()) {
+                timeManager.forceDailyReset(player.getUniqueId(), today);
+                dailyRewardManager.resetCache(player.getUniqueId());
+            }
+            getLogger().info("Recompensas diarias resetadas (" + today + ").");
         });
     }
 

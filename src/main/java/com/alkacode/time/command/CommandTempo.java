@@ -4,6 +4,7 @@ import com.alkacode.core.scheduler.AlkaScheduler;
 import com.alkacode.time.database.TimeRepository;
 import com.alkacode.time.gui.TimeMenu;
 import com.alkacode.time.gui.TopMenu;
+import com.alkacode.time.manager.DailyRewardManager;
 import com.alkacode.time.manager.PlayerTimeManager;
 import com.alkacode.time.manager.RewardManager;
 import com.alkacode.time.manager.TimeEconomyService;
@@ -26,18 +27,20 @@ public final class CommandTempo implements CommandExecutor, TabCompleter {
 
     private final JavaPlugin plugin;
     private final PlayerTimeManager timeManager;
-    private final RewardManager rewardManager;
+    private final DailyRewardManager dailyRewardManager;
+    private final RewardManager milestoneManager;
     private final TimeRepository repository;
     private final AlkaScheduler scheduler;
     private final TimeEconomyService economyService;
     private final Messages messages;
 
-    public CommandTempo(JavaPlugin plugin, PlayerTimeManager timeManager, RewardManager rewardManager,
-                         TimeRepository repository, AlkaScheduler scheduler,
+    public CommandTempo(JavaPlugin plugin, PlayerTimeManager timeManager, DailyRewardManager dailyRewardManager,
+                         RewardManager milestoneManager, TimeRepository repository, AlkaScheduler scheduler,
                          TimeEconomyService economyService, Messages messages) {
         this.plugin = plugin;
         this.timeManager = timeManager;
-        this.rewardManager = rewardManager;
+        this.dailyRewardManager = dailyRewardManager;
+        this.milestoneManager = milestoneManager;
         this.repository = repository;
         this.scheduler = scheduler;
         this.economyService = economyService;
@@ -76,7 +79,8 @@ public final class CommandTempo implements CommandExecutor, TabCompleter {
     public void openTimeMenu(Player player) {
         String title = plugin.getConfig().getString("menu.tempo-title", "<green>Seu Tempo Online");
         int rows = plugin.getConfig().getInt("menu.tempo-rows", 3);
-        new TimeMenu(plugin, player, title, rows, timeManager, rewardManager, economyService, messages, this::openTopMenu).open();
+        new TimeMenu(plugin, player, title, rows, timeManager, dailyRewardManager, milestoneManager,
+                economyService, messages, this::openTopMenu).open();
     }
 
     public void openTopMenu(Player player) {

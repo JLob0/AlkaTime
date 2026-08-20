@@ -33,33 +33,60 @@ public final class PlayerTimeManager {
     private final Map<UUID, Long> sessionStart = new ConcurrentHashMap<>();
     private final Map<UUID, Long> baseline = new ConcurrentHashMap<>();
 
+    // Tempo de HOJE (reseta a meia-noite, ver RewardsManager diario) - anchor proprio
+    // (nao reaproveita sessionStart) pra permitir "cortar" o dia no meio de uma sessao
+    // continua sem afetar a contagem vitalicia (ver AlkaTimePlugin#periodicTask, que
+    // detecta a virada de dia e chama forceDailyReset pra quem esta online).
+    private final Map<UUID, Long> dailyAnchor = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> dailyBaseline = new ConcurrentHashMap<>();
+
     public PlayerTimeManager(TimeRepository repository, AlkaScheduler scheduler, java.util.logging.Logger logger) {
         this.repository = repository;
         this.scheduler = scheduler;
         this.logger = logger;
     }
 
+    /** Data de hoje no formato usado pra comparar com o daily_reset_date salvo no banco. */
+    public static String today() {
+        return java.time.LocalDate.now().toString();
+    }
+
     public void onJoin(Player player) {
         UUID uuid = player.getUniqueId();
         scheduler.runAsync(() -> {
             long dbTotal = repository.getTotalSeconds(uuid);
+            TimeRepository.DailyState daily = repository.getDailyState(uuid, today());
             baseline.put(uuid, dbTotal);
-            sessionStart.put(uuid, System.currentTimeMillis());
+            dailyBaseline.put(uuid, daily.seconds());
+            long now = System.currentTimeMillis();
+            sessionStart.put(uuid, now);
+            dailyAnchor.put(uuid, now);
         });
     }
 
     public void onQuit(Player player) {
         UUID uuid = player.getUniqueId();
         Long start = sessionStart.remove(uuid);
+        Long dayStart = dailyAnchor.remove(uuid);
         if (start == null) {
             // load do join nunca terminou (desconexao quase instantanea) - nada a persistir.
             return;
         }
-        long elapsed = (System.currentTimeMillis() - start) / 1000L;
+        long now = System.currentTimeMillis();
+        long elapsed = (now - start) / 1000L;
         long newTotal = baseline.getOrDefault(uuid, 0L) + elapsed;
         baseline.remove(uuid);
+
+        long dailyElapsed = dayStart == null ? 0L : (now - dayStart) / 1000L;
+        long newDailyTotal = dailyBaseline.getOrDefault(uuid, 0L) + dailyElapsed;
+        dailyBaseline.remove(uuid);
+
         String name = player.getName();
-        scheduler.runAsync(() -> repository.saveTotalSeconds(uuid, name, newTotal));
+        String today = today();
+        scheduler.runAsync(() -> {
+            repository.saveTotalSeconds(uuid, name, newTotal);
+            repository.saveDailySeconds(uuid, newDailyTotal, today);
+        });
     }
 
     /**
@@ -70,23 +97,36 @@ public final class PlayerTimeManager {
      */
     public void autosaveAll() {
         long now = System.currentTimeMillis();
+        String today = today();
         for (UUID uuid : sessionStart.keySet()) {
             Long start = sessionStart.get(uuid);
             if (start == null) {
                 continue;
             }
             long elapsed = (now - start) / 1000L;
-            if (elapsed <= 0) {
+            long newTotal = baseline.getOrDefault(uuid, 0L) + elapsed;
+            if (elapsed > 0) {
+                baseline.put(uuid, newTotal);
+                sessionStart.put(uuid, now);
+            }
+
+            Long dayStart = dailyAnchor.get(uuid);
+            long dailyElapsed = dayStart == null ? 0L : (now - dayStart) / 1000L;
+            long newDailyTotal = dailyBaseline.getOrDefault(uuid, 0L) + dailyElapsed;
+            if (dailyElapsed > 0) {
+                dailyBaseline.put(uuid, newDailyTotal);
+                dailyAnchor.put(uuid, now);
+            }
+
+            if (elapsed <= 0 && dailyElapsed <= 0) {
                 continue;
             }
-            long newTotal = baseline.getOrDefault(uuid, 0L) + elapsed;
-            baseline.put(uuid, newTotal);
-            sessionStart.put(uuid, now);
 
             Player player = Bukkit.getPlayer(uuid);
             String name = player != null ? player.getName() : null;
             try {
                 repository.saveTotalSeconds(uuid, name, newTotal);
+                repository.saveDailySeconds(uuid, newDailyTotal, today);
             } catch (Exception e) {
                 logger.log(java.util.logging.Level.SEVERE, "Erro no autosave de tempo online de " + uuid, e);
             }
@@ -96,15 +136,32 @@ public final class PlayerTimeManager {
     /** Chamado no onPluginDisable - sincrono e bloqueante de proposito, precisa terminar antes do AlkaCore fechar o pool de conexoes. */
     public void flushAllOnDisable() {
         long now = System.currentTimeMillis();
+        String today = today();
         for (Map.Entry<UUID, Long> entry : sessionStart.entrySet()) {
             UUID uuid = entry.getKey();
             long elapsed = (now - entry.getValue()) / 1000L;
             long newTotal = baseline.getOrDefault(uuid, 0L) + elapsed;
             OfflinePlayer player = Bukkit.getOfflinePlayer(uuid);
             repository.saveTotalSeconds(uuid, player.getName(), newTotal);
+
+            Long dayStart = dailyAnchor.get(uuid);
+            long dailyElapsed = dayStart == null ? 0L : (now - dayStart) / 1000L;
+            long newDailyTotal = dailyBaseline.getOrDefault(uuid, 0L) + dailyElapsed;
+            repository.saveDailySeconds(uuid, newDailyTotal, today);
         }
         sessionStart.clear();
         baseline.clear();
+        dailyAnchor.clear();
+        dailyBaseline.clear();
+    }
+
+    /** Chamado pela varredura de virada de dia do plugin (AlkaTimePlugin#periodicTask) pra
+     * jogadores que continuam online quando a data muda - reseta o contador diario em
+     * memoria E no banco (segundos e claimed) sem afetar o total vitalicio. */
+    public void forceDailyReset(UUID uuid, String today) {
+        dailyBaseline.put(uuid, 0L);
+        dailyAnchor.put(uuid, System.currentTimeMillis());
+        repository.resetDaily(uuid, today);
     }
 
     public boolean isTracking(UUID uuid) {
@@ -119,6 +176,16 @@ public final class PlayerTimeManager {
         }
         long elapsed = (System.currentTimeMillis() - start) / 1000L;
         return baseline.getOrDefault(uuid, 0L) + elapsed;
+    }
+
+    /** Leitura "ao vivo" sincrona do tempo online de HOJE - so valida pra jogador online. */
+    public long getTodaySecondsSync(UUID uuid) {
+        Long start = dailyAnchor.get(uuid);
+        if (start == null) {
+            return 0L;
+        }
+        long elapsed = (System.currentTimeMillis() - start) / 1000L;
+        return dailyBaseline.getOrDefault(uuid, 0L) + elapsed;
     }
 
     /** Funciona pra qualquer uuid (online ou offline) - usado pela AlkaTimeAPI e pelo menu de TOP/admin. */

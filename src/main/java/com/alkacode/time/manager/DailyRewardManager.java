@@ -21,15 +21,15 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Missoes de tempo online (rewards.yml) - "quantas o admin quiser", uma secao por
- * quantidade de segundos. Moeda vem da AlkaEconomy via {@link TimeEconomyService}
- * (R4); comandos extras (opcional) rodam pelo console, mesma ideia do KTempo original
- * mas sem ser o unico mecanismo de recompensa.
+ * Recompensas DIARIAS de tempo online (daily_rewards.yml) - resetam todo dia, ao
+ * contrario do RewardManager (marcos vitalicios, nunca reseta). Mesma forma de
+ * ClaimResult/ClaimOutcome do RewardManager de proposito (TimeMenu/GUIs tratam os
+ * dois do mesmo jeito), mas le tempo/claimed de hoje via
+ * {@link TimeRepository#getDailyState}, nao do total vitalicio.
  */
-public final class RewardManager {
+public final class DailyRewardManager {
 
     private final JavaPlugin plugin;
-    private final String fileName;
     private final TimeRepository repository;
     private final AlkaScheduler scheduler;
     private final PlayerTimeManager timeManager;
@@ -41,10 +41,9 @@ public final class RewardManager {
 
     private final Map<UUID, Set<Integer>> claimedCache = new ConcurrentHashMap<>();
 
-    public RewardManager(JavaPlugin plugin, String fileName, TimeRepository repository, AlkaScheduler scheduler,
-                          PlayerTimeManager timeManager, TimeEconomyService economyService, String defaultCurrency) {
+    public DailyRewardManager(JavaPlugin plugin, TimeRepository repository, AlkaScheduler scheduler,
+                               PlayerTimeManager timeManager, TimeEconomyService economyService, String defaultCurrency) {
         this.plugin = plugin;
-        this.fileName = fileName;
         this.repository = repository;
         this.scheduler = scheduler;
         this.timeManager = timeManager;
@@ -54,32 +53,23 @@ public final class RewardManager {
     }
 
     public void load() {
-        rewardsFile = new File(plugin.getDataFolder(), fileName);
+        rewardsFile = new File(plugin.getDataFolder(), "daily_rewards.yml");
         if (!rewardsFile.exists()) {
-            try (var in = plugin.getResource(fileName)) {
+            try (var in = plugin.getResource("daily_rewards.yml")) {
                 if (in != null) {
                     Files.copy(in, rewardsFile.toPath());
                 }
             } catch (IOException e) {
-                plugin.getLogger().warning("Nao foi possivel criar " + fileName + ": " + e.getMessage());
+                plugin.getLogger().warning("Nao foi possivel criar daily_rewards.yml: " + e.getMessage());
             }
         }
         rewardsConfig = YamlConfiguration.loadConfiguration(rewardsFile);
-        if (MilestoneGenerator.generateIfMissing(rewardsConfig)) {
-            try {
-                rewardsConfig.save(rewardsFile);
-                plugin.getLogger().info("Gerados " + getOrderedSeconds().size() + " marcos em " + fileName + " a partir das fases configuradas.");
-            } catch (IOException e) {
-                plugin.getLogger().warning("Nao foi possivel salvar " + fileName + " apos gerar os marcos: " + e.getMessage());
-            }
-        }
     }
 
     public ConfigurationSection getMissoes() {
         return rewardsConfig.getConfigurationSection("missoes");
     }
 
-    /** Chaves (segundos) de todas as missoes configuradas, ordenadas crescente. */
     public List<Integer> getOrderedSeconds() {
         ConfigurationSection missoes = getMissoes();
         if (missoes == null) {
@@ -90,7 +80,7 @@ public final class RewardManager {
             try {
                 seconds.add(Integer.parseInt(key));
             } catch (NumberFormatException ignored) {
-                plugin.getLogger().warning("Chave invalida em rewards.yml (nao e um numero de segundos): " + key);
+                plugin.getLogger().warning("Chave invalida em daily_rewards.yml: " + key);
             }
         }
         seconds.sort(Comparator.naturalOrder());
@@ -102,13 +92,11 @@ public final class RewardManager {
         return missoes == null ? null : missoes.getConfigurationSection(String.valueOf(seconds));
     }
 
+    /** Recarrega o cache do dia direto do banco - self-heals se o dia mudou (ver TimeRepository#getDailyState). */
     public void onJoin(UUID uuid) {
-        // computeIfAbsent + addAll (nunca put/overwrite) - se um clique de claim() chegar
-        // antes desse load assincrono terminar, a entrada que ele criou sobrevive em vez
-        // de ser sobrescrita por este load mais lento (mesma logica de PlayerTimeManager#onJoin).
         scheduler.runAsync(() -> {
-            Set<Integer> claimed = repository.getClaimedRewards(uuid);
-            claimedCache.computeIfAbsent(uuid, k -> ConcurrentHashMap.newKeySet()).addAll(claimed);
+            TimeRepository.DailyState state = repository.getDailyState(uuid, PlayerTimeManager.today());
+            claimedCache.computeIfAbsent(uuid, k -> ConcurrentHashMap.newKeySet()).addAll(state.claimed());
         });
     }
 
@@ -116,29 +104,26 @@ public final class RewardManager {
         claimedCache.remove(uuid);
     }
 
+    /** Chamado pela varredura de virada de dia do plugin pra jogadores que ficaram online passando da meia-noite. */
+    public void resetCache(UUID uuid) {
+        claimedCache.put(uuid, ConcurrentHashMap.newKeySet());
+    }
+
     public boolean isClaimed(UUID uuid, int seconds) {
         return claimedCache.getOrDefault(uuid, Set.of()).contains(seconds);
     }
 
-    public enum ClaimResult {
-        SUCCESS, INVALID_REWARD, NOT_ENOUGH_TIME, ALREADY_CLAIMED
-    }
-
-    public record ClaimOutcome(ClaimResult result, String currencyId, double amount) {
-    }
-
-    /** Sincrono na parte de checagem (usa o cache/PlayerTimeManager, ambos ja em memoria) - so a escrita final no banco e assincrona. */
-    public ClaimOutcome claim(Player player, int seconds) {
+    public RewardManager.ClaimOutcome claim(Player player, int seconds) {
         ConfigurationSection reward = getReward(seconds);
         if (reward == null) {
-            return new ClaimOutcome(ClaimResult.INVALID_REWARD, null, 0);
+            return new RewardManager.ClaimOutcome(RewardManager.ClaimResult.INVALID_REWARD, null, 0);
         }
         UUID uuid = player.getUniqueId();
         if (isClaimed(uuid, seconds)) {
-            return new ClaimOutcome(ClaimResult.ALREADY_CLAIMED, null, 0);
+            return new RewardManager.ClaimOutcome(RewardManager.ClaimResult.ALREADY_CLAIMED, null, 0);
         }
-        if (timeManager.getOnlineSecondsSync(uuid) < seconds) {
-            return new ClaimOutcome(ClaimResult.NOT_ENOUGH_TIME, null, 0);
+        if (timeManager.getTodaySecondsSync(uuid) < seconds) {
+            return new RewardManager.ClaimOutcome(RewardManager.ClaimResult.NOT_ENOUGH_TIME, null, 0);
         }
 
         String currencyId = reward.getString("currency", defaultCurrency);
@@ -152,8 +137,8 @@ public final class RewardManager {
         }
 
         claimedCache.computeIfAbsent(uuid, k -> ConcurrentHashMap.newKeySet()).add(seconds);
-        scheduler.runAsync(() -> repository.addClaimedReward(uuid, seconds));
+        scheduler.runAsync(() -> repository.addDailyClaimed(uuid, seconds, PlayerTimeManager.today()));
 
-        return new ClaimOutcome(ClaimResult.SUCCESS, currencyId, amount);
+        return new RewardManager.ClaimOutcome(RewardManager.ClaimResult.SUCCESS, currencyId, amount);
     }
 }

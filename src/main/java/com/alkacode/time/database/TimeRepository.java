@@ -30,6 +30,7 @@ public final class TimeRepository extends AbstractRepository {
         super(db);
         this.logger = logger;
         createTable();
+        addDailyColumnsIfMissing();
     }
 
     private void createTable() {
@@ -44,6 +45,23 @@ public final class TimeRepository extends AbstractRepository {
                     """);
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Erro ao criar tabela alka_time_data", e);
+        }
+    }
+
+    /** Colunas novas das recompensas DIARIAS - instalacao existente nao tem elas ainda, ADD COLUMN falha
+     * silenciosamente (coluna ja existe) em qualquer boot depois do primeiro, mesmo padrao ja usado em
+     * outros repositorios Alka* (ex: ClanShopItemRepository/CrateLocationRepository). */
+    private void addDailyColumnsIfMissing() {
+        tryAddColumn("ALTER TABLE alka_time_data ADD COLUMN daily_seconds BIGINT DEFAULT 0");
+        tryAddColumn("ALTER TABLE alka_time_data ADD COLUMN daily_reset_date VARCHAR(10) DEFAULT ''");
+        tryAddColumn("ALTER TABLE alka_time_data ADD COLUMN daily_claimed TEXT");
+    }
+
+    private void tryAddColumn(String sql) {
+        try (Connection conn = db.getConnection(); var stmt = conn.createStatement()) {
+            stmt.execute(sql);
+        } catch (SQLException ignored) {
+            // coluna ja existe - normal em qualquer boot depois do primeiro.
         }
     }
 
@@ -151,6 +169,77 @@ public final class TimeRepository extends AbstractRepository {
         List<Integer> sorted = new ArrayList<>(claimed);
         sorted.sort(null);
         return String.join(",", sorted.stream().map(String::valueOf).toList());
+    }
+
+    // --------------------------------------------------------------- diario
+
+    public record DailyState(long seconds, Set<Integer> claimed) {
+    }
+
+    /** Le segundos/claimed de HOJE - se a data salva for de outro dia, reseta no banco
+     * na hora e retorna ja zerado (self-healing, nenhum chamador precisa saber que o
+     * dia virou primeiro). */
+    public DailyState getDailyState(UUID uuid, String today) {
+        ensureRow(uuid);
+        String sql = "SELECT daily_seconds, daily_reset_date, daily_claimed FROM alka_time_data WHERE player_uuid = ?";
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return new DailyState(0L, new HashSet<>());
+                }
+                String resetDate = rs.getString("daily_reset_date");
+                if (!today.equals(resetDate)) {
+                    resetDaily(uuid, today);
+                    return new DailyState(0L, new HashSet<>());
+                }
+                return new DailyState(rs.getLong("daily_seconds"), parseClaimed(rs.getString("daily_claimed")));
+            }
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Erro ao ler estado diario de " + uuid, e);
+            return new DailyState(0L, new HashSet<>());
+        }
+    }
+
+    public void resetDaily(UUID uuid, String today) {
+        ensureRow(uuid);
+        String sql = "UPDATE alka_time_data SET daily_seconds = 0, daily_claimed = '', daily_reset_date = ? WHERE player_uuid = ?";
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, today);
+            ps.setString(2, uuid.toString());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Erro ao resetar diario de " + uuid, e);
+        }
+    }
+
+    public void saveDailySeconds(UUID uuid, long dailySeconds, String today) {
+        ensureRow(uuid);
+        String sql = "UPDATE alka_time_data SET daily_seconds = ?, daily_reset_date = ? WHERE player_uuid = ?";
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, dailySeconds);
+            ps.setString(2, today);
+            ps.setString(3, uuid.toString());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Erro ao salvar tempo diario de " + uuid, e);
+        }
+    }
+
+    public void addDailyClaimed(UUID uuid, int seconds, String today) {
+        DailyState state = getDailyState(uuid, today); // ja se autocura se o dia mudou desde a ultima leitura
+        Set<Integer> claimed = new HashSet<>(state.claimed());
+        claimed.add(seconds);
+        String csv = joinClaimed(claimed);
+        String sql = "UPDATE alka_time_data SET daily_claimed = ?, daily_reset_date = ? WHERE player_uuid = ?";
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, csv);
+            ps.setString(2, today);
+            ps.setString(3, uuid.toString());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Erro ao salvar recompensa diaria coletada de " + uuid, e);
+        }
     }
 
     // -------------------------------------------------------------------- top

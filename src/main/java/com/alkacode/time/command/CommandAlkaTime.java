@@ -1,5 +1,6 @@
 package com.alkacode.time.command;
 
+import com.alkacode.time.manager.DailyRewardManager;
 import com.alkacode.time.manager.PlayerTimeManager;
 import com.alkacode.time.manager.RewardManager;
 import com.alkacode.time.npc.TimeNpcManager;
@@ -23,15 +24,17 @@ public final class CommandAlkaTime implements CommandExecutor, TabCompleter {
 
     private final JavaPlugin plugin;
     private final PlayerTimeManager timeManager;
-    private final RewardManager rewardManager;
+    private final RewardManager milestoneManager;
+    private final DailyRewardManager dailyRewardManager;
     private final TimeNpcManager npcManager;
     private final Messages messages;
 
-    public CommandAlkaTime(JavaPlugin plugin, PlayerTimeManager timeManager, RewardManager rewardManager,
-                            TimeNpcManager npcManager, Messages messages) {
+    public CommandAlkaTime(JavaPlugin plugin, PlayerTimeManager timeManager, RewardManager milestoneManager,
+                            DailyRewardManager dailyRewardManager, TimeNpcManager npcManager, Messages messages) {
         this.plugin = plugin;
         this.timeManager = timeManager;
-        this.rewardManager = rewardManager;
+        this.milestoneManager = milestoneManager;
+        this.dailyRewardManager = dailyRewardManager;
         this.npcManager = npcManager;
         this.messages = messages;
     }
@@ -81,7 +84,8 @@ public final class CommandAlkaTime implements CommandExecutor, TabCompleter {
     private void handleReload(CommandSender sender) {
         plugin.reloadConfig();
         messages.load();
-        rewardManager.load();
+        milestoneManager.load();
+        dailyRewardManager.load();
         sender.sendMessage(messages.get("admin.reload-sucesso"));
     }
 

@@ -1,0 +1,71 @@
+# Recompensas DIARIAS do AlkaTime - resetam todo dia (ver PlayerTimeManager#today()).
+# Uma chave por quantidade de SEGUNDOS de tempo online HOJE - independente do tempo
+# vitalicio (isso fica em milestones.yml). "comandos" e opcional, roda via console
+# ALEM da moeda (currency/amount) - deixe [] se so quiser a moeda.
+missoes:
+  "1800": # 30 minutos - Faisca Temporal
+    slot: 11
+    material: FLINT_AND_STEEL
+    name: "<yellow>Faísca Temporal <gray>(30m)"
+    lore:
+      - "<gray>Jogue por 30 minutos hoje e colete!"
+    currency: ticks
+    amount: 10
+    comandos:
+      - "eco give %player% 500"
+
+  "3600": # 1 hora - Pulso Sincronizado
+    slot: 13
+    material: CLOCK
+    name: "<aqua>Pulso Sincronizado <gray>(1h)"
+    lore:
+      - "<gray>Jogue por 1 hora hoje e colete!"
+    currency: ticks
+    amount: 25
+    comandos:
+      - "eco give %player% 1000"
+
+  "7200": # 2 horas - Fluxo Continuo
+    slot: 15
+    material: PRISMARINE_CRYSTALS
+    name: "<blue>Fluxo Contínuo <gray>(2h)"
+    lore:
+      - "<gray>Jogue por 2 horas hoje e colete!"
+    currency: ticks
+    amount: 50
+    comandos:
+      - "eco give %player% 2500"
+
+  "14400": # 4 horas - Transe Estatico
+    slot: 20
+    material: ENDER_PEARL
+    name: "<dark_purple>Transe Estático <gray>(4h)"
+    lore:
+      - "<gray>Jogue por 4 horas hoje e colete!"
+    currency: ticks
+    amount: 100
+    comandos:
+      - "eco give %player% 5000"
+
+  "28800": # 8 horas - Distorcao de Horas
+    slot: 22
+    material: NETHERITE_SCRAP
+    name: "<light_purple>Distorção de Horas <gray>(8h)"
+    lore:
+      - "<gray>Jogue por 8 horas hoje e colete!"
+    currency: ticks
+    amount: 200
+    comandos:
+      - "eco give %player% 10000"
+
+  "43200": # 12 horas - Paradoxo de Alka
+    slot: 24
+    material: NETHER_STAR
+    name: "<gradient:#FF4500:#8B0000><bold>Paradoxo de Alka</bold></gradient> <gray>(12h)"
+    lore:
+      - "<gray>Jogue por 12 horas hoje e colete!"
+      - "<dark_gray>Recompensa máxima do dia."
+    currency: ticks
+    amount: 400
+    comandos:
+      - "eco give %player% 25000"

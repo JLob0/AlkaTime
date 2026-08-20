@@ -5,12 +5,14 @@
 autosave-interval-minutes: 5
 
 # Moeda da AlkaEconomy usada nas recompensas padrao (ver rewards.yml). Precisa ser
-# um id valido registrado no config.yml da AlkaEconomy (ex: ticks, coins, drakonio).
+# um id valido registrado no config.yml da AlkaEconomy (ex: ticks, gold, alkarion).
 default-currency: ticks
 
 menu:
   tempo-title: "<gradient:#55FFAA:#00AA55><bold>Seu Tempo Online</bold></gradient>"
   tempo-rows: 3
+  diarias-title: "<gradient:#55FFAA:#00AA55><bold>Recompensas Diárias</bold></gradient>"
+  diarias-rows: 4
   top-title: "<gradient:#FFAA00:#FFE055><bold>TOP Tempo Online</bold></gradient>"
   top-rows: 6
   top-limit: 50

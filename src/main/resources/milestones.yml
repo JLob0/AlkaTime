@@ -1,0 +1,79 @@
+# Marcos de tempo online VITALICIO do AlkaTime (nunca reseta - recompensa diaria
+# fica em daily_rewards.yml). Os 100 marcos sao GERADOS a partir das "fases" abaixo
+# na primeira vez que o plugin liga (ver MilestoneGenerator) e escritos de volta
+# neste arquivo, na secao "missoes" - depois disso voce pode editar cada marco a
+# mao normalmente, igual qualquer outro reward. Pra gerar de novo do zero a partir
+# das fases (ex: depois de mudar os numeros abaixo), apague a secao "missoes"
+# inteira e rode "/alkatime reload".
+fases:
+  fase_1:
+    nome: "Grãos da Ampulheta"
+    marco_inicial: 1
+    quantidade: 20
+    horas_inicio: 1
+    horas_fim: 24
+    material: WOODEN_SWORD
+    cor_nome: "<yellow>"
+    ticks_inicio: 20
+    ticks_fim: 100
+    gold_inicio: 1000
+    gold_fim: 5000
+
+  fase_2:
+    nome: "Engrenagens do Tempo"
+    marco_inicial: 21
+    quantidade: 20
+    horas_inicio: 30
+    horas_fim: 168
+    material: CLOCK
+    cor_nome: "<aqua>"
+    ticks_inicio: 150
+    ticks_fim: 400
+    gold_inicio: 6000
+    gold_fim: 12000
+
+  fase_3:
+    nome: "Senhores do Pêndulo"
+    marco_inicial: 41
+    quantidade: 25
+    horas_inicio: 192
+    horas_fim: 720
+    material: GOLD_BLOCK
+    cor_nome: "<gold>"
+    ticks_inicio: 500
+    ticks_fim: 1200
+    gold_inicio: 15000
+    gold_fim: 30000
+
+  fase_4:
+    nome: "Guardiões da Cronologia"
+    marco_inicial: 66
+    quantidade: 20
+    horas_inicio: 770
+    horas_fim: 1800
+    material: DIAMOND_BLOCK
+    cor_nome: "<light_purple>"
+    ticks_inicio: 1500
+    ticks_fim: 4000
+    gold_inicio: 35000
+    gold_fim: 70000
+
+  fase_5:
+    nome: "Além da Eternidade"
+    marco_inicial: 86
+    quantidade: 15
+    horas_inicio: 1900
+    horas_fim: 3000
+    material: NETHER_STAR
+    cor_nome: "<gradient:#FF4500:#8B0000>"
+    ticks_inicio: 5000
+    ticks_fim: 10000
+    gold_inicio: 80000
+    gold_fim: 150000
+    # Comandos extras SO no ultimo marco da fase (o marco 100, 3000h) - alem da
+    # moeda normal calculada pela curva acima.
+    marco_final_material: DRAGON_EGG
+    marco_final_comandos:
+      - "lp user %player% parent add imortal"
+      - "crate give %player% cosmico 5"
+      - "broadcast <gold>[AlkaTime] <white>O jogador <yellow>%player% <white>alcançou o marco máximo de <aqua>3.000 Horas Online<white>!"

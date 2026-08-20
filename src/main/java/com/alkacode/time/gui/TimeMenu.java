@@ -1,21 +1,17 @@
 package com.alkacode.time.gui;
 
 import com.alkacode.core.gui.BaseGui;
+import com.alkacode.time.manager.DailyRewardManager;
 import com.alkacode.time.manager.PlayerTimeManager;
 import com.alkacode.time.manager.RewardManager;
 import com.alkacode.time.manager.TimeEconomyService;
-import com.alkacode.time.util.ItemBuilder;
 import com.alkacode.time.util.Messages;
 import com.alkacode.time.util.TimeFormatter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
-import org.bukkit.Sound;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -25,26 +21,28 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Menu principal do AlkaTime - tempo jogado + missoes de recompensa (BaseGui do
- * AlkaCore, R3). O botao de TOP delega pro chamador (ver CommandTempo) porque abrir
- * o TopMenu exige uma leitura assincrona do banco antes de existir GUI pra abrir.
+ * Hub principal do AlkaTime - so navegacao (Diarias / Marcos / TOP), sem
+ * recompensa nenhuma direto aqui (isso vive em DailyRewardsMenu/MilestonesMenu,
+ * ver [[feedback-menu-back-button]] pra padrao de submenu com Voltar).
  */
 public final class TimeMenu extends BaseGui {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
     private final PlayerTimeManager timeManager;
-    private final RewardManager rewardManager;
+    private final DailyRewardManager dailyRewardManager;
+    private final RewardManager milestoneManager;
     private final TimeEconomyService economyService;
     private final Messages messages;
     private final Consumer<Player> openTop;
 
     public TimeMenu(JavaPlugin plugin, Player player, String title, int rows,
-                     PlayerTimeManager timeManager, RewardManager rewardManager,
+                     PlayerTimeManager timeManager, DailyRewardManager dailyRewardManager, RewardManager milestoneManager,
                      TimeEconomyService economyService, Messages messages, Consumer<Player> openTop) {
-        super(plugin, player, title, rows, "alkatime_menu");
+        super(plugin, player, title, rows, "alkatime_hub");
         this.timeManager = timeManager;
-        this.rewardManager = rewardManager;
+        this.dailyRewardManager = dailyRewardManager;
+        this.milestoneManager = milestoneManager;
         this.economyService = economyService;
         this.messages = messages;
         this.openTop = openTop;
@@ -52,56 +50,33 @@ public final class TimeMenu extends BaseGui {
 
     @Override
     public void render() {
-        long online = timeManager.getOnlineSecondsSync(player.getUniqueId());
-        String formatted = TimeFormatter.format(online);
+        long total = timeManager.getOnlineSecondsSync(player.getUniqueId());
+        setItem(4, buildInfoItem(TimeFormatter.format(total)));
 
-        setItem(4, buildInfoItem(formatted));
-
-        int lastRow = (inventory.getSize() / 9) - 1;
-        setItem(lastRow * 9, buildTopButton(), e -> openTop.accept(player));
-
-        for (int seconds : rewardManager.getOrderedSeconds()) {
-            ConfigurationSection reward = rewardManager.getReward(seconds);
-            if (reward == null) {
-                continue;
-            }
-            int slot = reward.getInt("slot", -1);
-            if (slot < 0 || slot >= inventory.getSize()) {
-                continue;
-            }
-            boolean claimed = rewardManager.isClaimed(player.getUniqueId(), seconds);
-            boolean available = online >= seconds;
-            setItem(slot, buildRewardItem(reward, seconds, claimed, available),
-                    (!claimed && available) ? e -> attemptClaim(seconds) : null);
-        }
+        setItem(11, buildDailyButton(), e -> openDaily());
+        setItem(13, buildMilestonesButton(), e -> openMilestones());
+        setItem(15, buildTopButton(), e -> openTop.accept(player));
 
         fill(glass());
     }
 
-    private void attemptClaim(int seconds) {
-        RewardManager.ClaimOutcome outcome = rewardManager.claim(player, seconds);
-        switch (outcome.result()) {
-            case SUCCESS -> {
-                player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
-                player.sendMessage(messages.get("recompensa.coletada",
-                        "<amount>", String.valueOf((long) outcome.amount()),
-                        "<currency>", economyService.getCurrencyDisplayName(outcome.currencyId()),
-                        "<tempo>", TimeFormatter.format(seconds)));
-                refresh();
-            }
-            case ALREADY_CLAIMED -> {
-                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1, 1);
-                player.sendMessage(messages.get("recompensa.ja-coletada"));
-            }
-            case NOT_ENOUGH_TIME -> {
-                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1, 1);
-                player.sendMessage(messages.get("recompensa.invalida"));
-            }
-            case INVALID_REWARD -> {
-                // estado mudou entre o render e o clique (reward removido do config nesse meio tempo) - so re-renderiza.
-                refresh();
-            }
-        }
+    private void openDaily() {
+        String title = plugin.getConfig().getString("menu.diarias-title", "<green>Recompensas Diárias");
+        int rows = plugin.getConfig().getInt("menu.diarias-rows", 3);
+        new DailyRewardsMenu(plugin, player, title, rows, timeManager, dailyRewardManager, economyService, messages, this::reopen).open();
+    }
+
+    private void openMilestones() {
+        new MilestonesMenu(plugin, player, timeManager, milestoneManager, economyService, messages, this::reopen, 0).open();
+    }
+
+    private void reopen(Player p) {
+        new TimeMenu(plugin, p, title(), inventory.getSize() / 9, timeManager, dailyRewardManager, milestoneManager,
+                economyService, messages, openTop).open();
+    }
+
+    private String title() {
+        return plugin.getConfig().getString("menu.tempo-title", "<green>Seu Tempo Online");
     }
 
     private ItemStack buildInfoItem(String formatted) {
@@ -118,42 +93,32 @@ public final class TimeMenu extends BaseGui {
         return item;
     }
 
+    private ItemStack buildDailyButton() {
+        ItemStack item = new ItemStack(Material.SUNFLOWER);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(MM.deserialize(messages.raw("menu.botao-diarias")).decoration(TextDecoration.ITALIC, false));
+        meta.lore(messages.getList("menu.botao-diarias-lore").stream()
+                .map(c -> (Component) c.decoration(TextDecoration.ITALIC, false)).toList());
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private ItemStack buildMilestonesButton() {
+        ItemStack item = new ItemStack(Material.NETHER_STAR);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(MM.deserialize(messages.raw("menu.botao-marcos")).decoration(TextDecoration.ITALIC, false));
+        meta.lore(messages.getList("menu.botao-marcos-lore").stream()
+                .map(c -> (Component) c.decoration(TextDecoration.ITALIC, false)).toList());
+        item.setItemMeta(meta);
+        return item;
+    }
+
     private ItemStack buildTopButton() {
         ItemStack item = new ItemStack(Material.GOLDEN_HELMET);
         ItemMeta meta = item.getItemMeta();
         meta.displayName(MM.deserialize(messages.raw("menu.ver-top")).decoration(TextDecoration.ITALIC, false));
         item.setItemMeta(meta);
         return item;
-    }
-
-    private ItemStack buildRewardItem(ConfigurationSection reward, int seconds, boolean claimed, boolean available) {
-        ItemStack item = ItemBuilder.fromConfig(reward);
-        ItemMeta meta = item.getItemMeta();
-
-        if (claimed) {
-            meta.addEnchant(Enchantment.UNBREAKING, 1, true);
-            meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-            appendLore(meta, "<green>Recompensa ja coletada!");
-        } else if (available) {
-            appendLore(meta, "<yellow>Clique para coletar!");
-        } else {
-            item.setType(Material.GRAY_DYE);
-            meta = item.getItemMeta();
-            meta.displayName(reward.contains("name")
-                    ? MM.deserialize(reward.getString("name")).decoration(TextDecoration.ITALIC, false)
-                    : Component.text("Bloqueado"));
-            appendLore(meta, "<red>Faltam " + TimeFormatter.format(seconds - timeManager.getOnlineSecondsSync(player.getUniqueId())));
-        }
-
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private void appendLore(ItemMeta meta, String extraLine) {
-        List<Component> lore = new ArrayList<>(meta.hasLore() && meta.lore() != null ? meta.lore() : List.of());
-        lore.add(Component.empty());
-        lore.add(MM.deserialize(extraLine).decoration(TextDecoration.ITALIC, false));
-        meta.lore(lore);
     }
 
     private ItemStack glass() {

@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.alkacode"
-version = "1.1.0"
+version = "1.1.1"
 
 java {
     toolchain {
@@ -29,7 +29,7 @@ dependencies {
     // nao abre conexao JDBC propria nem registra o proprio GuiListener.
     compileOnly("com.alkacode:AlkaCore:1.0.3")
     // moeda "ticks" das recompensas de tempo online vem da AlkaEconomy (EconomyManager).
-    compileOnly("com.alkacode:AlkaEconomy:1.0.6")
+    compileOnly("com.alkacode:AlkaEconomy:1.0.8")
     compileOnly("me.clip:placeholderapi:2.11.6")
     // Citizens nao tem artefato Maven publico confiavel - hook via reflection pura
     // (ver hook/CitizensHook), entao nao entra aqui como dependencia de compilacao.
