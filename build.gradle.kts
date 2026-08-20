@@ -27,7 +27,7 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
     // banco/HikariCP e GUI base vem do AlkaCore (DatabaseProvider/BaseGui) - AlkaTime
     // nao abre conexao JDBC propria nem registra o proprio GuiListener.
-    compileOnly("com.alkacode:AlkaCore:1.0.3")
+    compileOnly("com.alkacode:AlkaCore:1.0.8")
     // moeda "ticks" das recompensas de tempo online vem da AlkaEconomy (EconomyManager).
     compileOnly("com.alkacode:AlkaEconomy:1.0.8")
     compileOnly("me.clip:placeholderapi:2.11.6")
