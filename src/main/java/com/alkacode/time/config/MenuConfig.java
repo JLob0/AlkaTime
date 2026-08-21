@@ -72,15 +72,17 @@ public final class MenuConfig {
         }
     }
 
+    /** Titulo (menus.yml.<path>.title) com placeholders - path e a chave da GUI (ex: "alkatime-hub"). */
     public String title(String path, Map<String, String> placeholders) {
-        return apply(config.getString(path, ""), placeholders);
+        return apply(config.getString(path + ".title", ""), placeholders);
     }
 
-    /** Le uma string solta (nao um item material/name/lore) de menus.yml.<path>, com
-     * placeholders - usado por linhas de lore reaproveitadas fora de um icone (ex: um
-     * estado dinamico coletado/disponivel/bloqueado escolhido em runtime pelo Java). */
+    /** Le uma string solta (nao um item material/name/lore) de menus.yml.<path> (path ja
+     * completo, sem sufixo automatico) com placeholders - usado por linhas de lore
+     * reaproveitadas fora de um icone (ex: um estado dinamico coletado/disponivel/bloqueado
+     * escolhido em runtime pelo Java). */
     public String text(String path, Map<String, String> placeholders) {
-        return title(path, placeholders);
+        return apply(config.getString(path, ""), placeholders);
     }
 
     /** Constroi o ItemStack a partir de menus.yml.<path> (material/name/lore) com placeholders. */
