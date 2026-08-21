@@ -1,6 +1,9 @@
 package com.alkacode.time.gui;
 
 import com.alkacode.core.gui.BaseGui;
+import com.alkacode.time.AlkaTimePlugin;
+import com.alkacode.time.config.MenuConfig;
+import com.alkacode.time.gui.layout.GuiLayoutLoader;
 import com.alkacode.time.manager.PlayerTimeManager;
 import com.alkacode.time.manager.RewardManager;
 import com.alkacode.time.manager.TimeEconomyService;
@@ -22,22 +25,19 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
  * Marcos VITALICIOS (nunca reseta), paginados - 100+ entradas nao cabem numa GUI so
- * (ver [[project-alkarankup]]'s RankListMenu, mesmo problema). 5 linhas uteis (slots
- * 10-16/19-25/28-34/37-43 = 28 slots, sobra a borda/linha de baixo pra nav+voltar).
+ * (ver [[project-alkarankup]]'s RankListMenu, mesmo problema). Slots de conteudo (char
+ * '0' em gui-layouts.yml) e icone/texto estatico vem de menus.yml/gui-layouts.yml (R8,
+ * chave "alkatime-milestones"); os marcos em si continuam dinamicos via milestones.yml.
  */
 public final class MilestonesMenu extends BaseGui {
 
+    private static final String KEY = "alkatime-milestones";
     private static final MiniMessage MM = MiniMessage.miniMessage();
-    private static final int[] CONTENT_SLOTS = {
-            10, 11, 12, 13, 14, 15, 16,
-            19, 20, 21, 22, 23, 24, 25,
-            28, 29, 30, 31, 32, 33, 34,
-            37, 38, 39, 40, 41, 42, 43
-    };
 
     private final PlayerTimeManager timeManager;
     private final RewardManager milestoneManager;
@@ -45,61 +45,75 @@ public final class MilestonesMenu extends BaseGui {
     private final Messages messages;
     private final Consumer<Player> back;
     private final List<Integer> orderedSeconds;
+    private final List<Integer> contentSlots;
     private final int page;
     private final int totalPages;
 
     public MilestonesMenu(JavaPlugin plugin, Player player,
                            PlayerTimeManager timeManager, RewardManager milestoneManager,
                            TimeEconomyService economyService, Messages messages, Consumer<Player> back, int page) {
-        super(plugin, player, computeTitle(messages, milestoneManager, page), 6, "alkatime_milestones");
+        super(plugin, player, computeTitle(plugin, milestoneManager, page), layout(plugin).rows(), KEY);
         this.timeManager = timeManager;
         this.milestoneManager = milestoneManager;
         this.economyService = economyService;
         this.messages = messages;
         this.back = back;
         this.orderedSeconds = milestoneManager.getOrderedSeconds();
-        this.totalPages = Math.max(1, (int) Math.ceil(orderedSeconds.size() / (double) CONTENT_SLOTS.length));
+        this.contentSlots = layout(plugin).findSlots('0');
+        this.totalPages = Math.max(1, (int) Math.ceil(orderedSeconds.size() / (double) contentSlots.size()));
         this.page = Math.max(0, Math.min(page, totalPages - 1));
     }
 
-    private static String computeTitle(Messages messages, RewardManager milestoneManager, int page) {
+    private static MenuConfig menu(JavaPlugin plugin) {
+        return ((AlkaTimePlugin) plugin).getMenuConfig();
+    }
+
+    private static GuiLayoutLoader.GuiLayout layout(JavaPlugin plugin) {
+        return ((AlkaTimePlugin) plugin).getGuiLayoutLoader().getLayout(KEY);
+    }
+
+    private static String computeTitle(JavaPlugin plugin, RewardManager milestoneManager, int page) {
+        int contentSlotCount = layout(plugin).findSlots('0').size();
         int size = milestoneManager.getOrderedSeconds().size();
-        int totalPages = Math.max(1, (int) Math.ceil(size / (double) CONTENT_SLOTS.length));
+        int totalPages = Math.max(1, (int) Math.ceil(size / (double) contentSlotCount));
         int clamped = Math.max(0, Math.min(page, totalPages - 1));
-        return messages.raw("menu.marcos-title")
-                .replace("<pagina>", String.valueOf(clamped + 1))
-                .replace("<total>", String.valueOf(totalPages));
+        return menu(plugin).title(KEY, Map.of(
+                "pagina", String.valueOf(clamped + 1),
+                "total", String.valueOf(totalPages)));
     }
 
     @Override
     public void render() {
-        fillBorder(glass()); // primeiro - senao sobrescreve o botao Voltar/nav (fillBorder e incondicional, ao contrario de fill())
+        GuiLayoutLoader.GuiLayout layout = layout(plugin);
+        MenuConfig menu = menu(plugin);
+
+        fill(menu.item("common.border", null)); // primeiro - senao sobrescreve o botao Voltar/nav
 
         long total = timeManager.getOnlineSecondsSync(player.getUniqueId());
 
-        int start = page * CONTENT_SLOTS.length;
-        int end = Math.min(start + CONTENT_SLOTS.length, orderedSeconds.size());
+        int start = page * contentSlots.size();
+        int end = Math.min(start + contentSlots.size(), orderedSeconds.size());
         for (int i = start; i < end; i++) {
             int seconds = orderedSeconds.get(i);
             ConfigurationSection milestone = milestoneManager.getReward(seconds);
             if (milestone == null) {
                 continue;
             }
-            int slot = CONTENT_SLOTS[i - start];
+            int slot = contentSlots.get(i - start);
             boolean claimed = milestoneManager.isClaimed(player.getUniqueId(), seconds);
             boolean available = total >= seconds;
-            setItem(slot, buildMilestoneItem(milestone, seconds, claimed, available),
+            setItem(slot, buildMilestoneItem(menu, milestone, seconds, claimed, available),
                     (!claimed && available) ? e -> attemptClaim(seconds) : null);
         }
 
-        setItem(49, buildBackButton(), e -> back.accept(player));
+        setItem(layout.firstSlot('V'), menu.item("common.voltar", null), e -> back.accept(player));
         if (page > 0) {
-            setItem(45, buildNavButton("<yellow>« Página anterior"),
+            setItem(layout.firstSlot('A'), menu.item(KEY + ".pagina-anterior", null),
                     e -> new MilestonesMenu(plugin, player, timeManager, milestoneManager,
                             economyService, messages, back, page - 1).open());
         }
         if (page < totalPages - 1) {
-            setItem(53, buildNavButton("<yellow>Próxima página »"),
+            setItem(layout.firstSlot('N'), menu.item(KEY + ".proxima-pagina", null),
                     e -> new MilestonesMenu(plugin, player, timeManager, milestoneManager,
                             economyService, messages, back, page + 1).open());
         }
@@ -128,42 +142,26 @@ public final class MilestonesMenu extends BaseGui {
         }
     }
 
-    private ItemStack buildMilestoneItem(ConfigurationSection milestone, int seconds, boolean claimed, boolean available) {
+    private ItemStack buildMilestoneItem(MenuConfig menu, ConfigurationSection milestone, int seconds, boolean claimed, boolean available) {
         ItemStack item = ItemBuilder.fromConfig(milestone);
         ItemMeta meta = item.getItemMeta();
 
         if (claimed) {
             meta.addEnchant(Enchantment.UNBREAKING, 1, true);
             meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-            appendLore(meta, "<green>Marco já coletado!");
+            appendLore(meta, menu.text(KEY + ".status-coletado", null));
         } else if (available) {
-            appendLore(meta, "<yellow>Clique para coletar!");
+            appendLore(meta, menu.text(KEY + ".status-disponivel", null));
         } else {
             item.setType(Material.GRAY_DYE);
             meta = item.getItemMeta();
             meta.displayName(milestone.contains("name")
                     ? MM.deserialize(milestone.getString("name")).decoration(TextDecoration.ITALIC, false)
-                    : Component.text("Bloqueado"));
+                    : MM.deserialize(menu.text(KEY + ".bloqueado-nome-padrao", null)).decoration(TextDecoration.ITALIC, false));
             long total = timeManager.getOnlineSecondsSync(player.getUniqueId());
-            appendLore(meta, "<red>Faltam " + TimeFormatter.format(seconds - total));
+            appendLore(meta, menu.text(KEY + ".status-bloqueado", Map.of("tempo", TimeFormatter.format(seconds - total))));
         }
 
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private ItemStack buildBackButton() {
-        ItemStack item = new ItemStack(Material.ARROW);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(MM.deserialize(messages.raw("menu.voltar")).decoration(TextDecoration.ITALIC, false));
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private ItemStack buildNavButton(String text) {
-        ItemStack item = new ItemStack(Material.ARROW);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(MM.deserialize(text).decoration(TextDecoration.ITALIC, false));
         item.setItemMeta(meta);
         return item;
     }
@@ -173,13 +171,5 @@ public final class MilestonesMenu extends BaseGui {
         lore.add(Component.empty());
         lore.add(MM.deserialize(extraLine).decoration(TextDecoration.ITALIC, false));
         meta.lore(lore);
-    }
-
-    private ItemStack glass() {
-        ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta meta = glass.getItemMeta();
-        meta.displayName(Component.empty());
-        glass.setItemMeta(meta);
-        return glass;
     }
 }

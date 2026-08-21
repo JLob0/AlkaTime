@@ -1,0 +1,48 @@
+# AlkaTime - Layouts de GUI (posicao dos slots)
+# Regras:
+#   # = fundo (preenchido com common.border via fillBackground())
+#   _ = vazio (nunca preenchido - reservado pra conteudo dinamico
+#       posicionado por outro YML, ex: rewards.yml/milestones.yml
+#       definem seu proprio slot por recompensa)
+#   Letras = slots estaticos controlados pelo Java - texto/icone de
+#            cada letra fica em menus.yml (chave descritiva)
+#   0 = slot de lista dinamica repetida (marcos/ranking) - posicao
+#       vem daqui, conteudo/icone e montado em runtime pelo Java
+
+alkatime-hub:
+  rows: 3
+  layout:
+    - "####I####"
+    - "##D#M#T##"
+    - "#########"
+  # I=tempo-jogado, D=botao-diarias, M=botao-marcos, T=ver-top
+
+alkatime-daily:
+  rows: 3
+  layout:
+    - "####I####"
+    - "_________"
+    - "####V####"
+  # I=tempo-hoje, V=voltar (linha do meio fica livre pras recompensas de rewards.yml)
+
+alkatime-milestones:
+  rows: 6
+  layout:
+    - "#########"
+    - "#0000000#"
+    - "#0000000#"
+    - "#0000000#"
+    - "#0000000#"
+    - "A###V###N"
+  # 0=marco (dinamico, ate 28 por pagina), A=pagina-anterior, V=voltar, N=proxima-pagina
+
+alkatime-top:
+  rows: 6
+  layout:
+    - "000000000"
+    - "000000000"
+    - "000000000"
+    - "000000000"
+    - "000000000"
+    - "####V####"
+  # 0=jogador do ranking (dinamico, ate 45), V=voltar

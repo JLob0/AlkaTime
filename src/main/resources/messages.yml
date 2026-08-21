@@ -27,30 +27,4 @@ admin:
   npc-inexistente: "<red>Nao ha nenhum NPC do AlkaTime configurado."
   npc-indisponivel: "<red>O Citizens nao esta instalado - nao e possivel criar o NPC."
 
-menu:
-  tempo-jogado-nome: "<yellow>Tempo jogado: <white><tempo>"
-  tempo-jogado-lore:
-    - "<gray>Voce jogou por <white><tempo></white> no servidor."
-    - "<green>Continue jogando para ganhar recompensas!"
-  voltar: "<gray>← Voltar"
-  top-item-nome: "<gold>#<posicao> <white><jogador>"
-  top-item-lore:
-    - "<gray>Tempo online: <white><tempo>"
-  top-vazio: "<gray>Ainda ninguem no ranking."
-  ver-top: "<yellow>Ver TOP de tempo online"
-  tempo-hoje-nome: "<yellow>Tempo hoje: <white><tempo>"
-  tempo-hoje-lore:
-    - "<gray>Reseta todo dia à meia-noite."
-  marcos-title: "<gradient:#AA55FF:#5500AA><bold>Marcos de Tempo</bold></gradient> <white>(<pagina>/<total>)"
-  botao-diarias: "<gradient:#55FFAA:#00AA55><bold>Recompensas Diárias</bold></gradient>"
-  botao-diarias-lore:
-    - "<gray>6 recompensas por tempo online HOJE."
-    - "<gray>Resetam à meia-noite."
-    - ""
-    - "<yellow>Clique para abrir!"
-  botao-marcos: "<gradient:#AA55FF:#5500AA><bold>Marcos de Tempo</bold></gradient>"
-  botao-marcos-lore:
-    - "<gray>100 marcos por tempo online VITALÍCIO."
-    - "<gray>Nunca resetam."
-    - ""
-    - "<yellow>Clique para abrir!"
+# Icones/textos/layout de GUI ficam em menus.yml/gui-layouts.yml (R8) - nao aqui.

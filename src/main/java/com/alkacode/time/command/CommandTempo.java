@@ -77,9 +77,7 @@ public final class CommandTempo implements CommandExecutor, TabCompleter {
     }
 
     public void openTimeMenu(Player player) {
-        String title = plugin.getConfig().getString("menu.tempo-title", "<green>Seu Tempo Online");
-        int rows = plugin.getConfig().getInt("menu.tempo-rows", 3);
-        new TimeMenu(plugin, player, title, rows, timeManager, dailyRewardManager, milestoneManager,
+        new TimeMenu(plugin, player, timeManager, dailyRewardManager, milestoneManager,
                 economyService, messages, this::openTopMenu).open();
     }
 
@@ -91,9 +89,7 @@ public final class CommandTempo implements CommandExecutor, TabCompleter {
                 if (!player.isOnline()) {
                     return;
                 }
-                String title = plugin.getConfig().getString("menu.top-title", "<gold>TOP Tempo Online");
-                int rows = plugin.getConfig().getInt("menu.top-rows", 6);
-                new TopMenu(plugin, player, title, rows, entries, messages, this::openTimeMenu).open();
+                new TopMenu(plugin, player, entries, messages, this::openTimeMenu).open();
             });
         });
     }

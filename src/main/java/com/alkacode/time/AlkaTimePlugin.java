@@ -7,7 +7,9 @@ import com.alkacode.time.api.AlkaTimeAPI;
 import com.alkacode.time.api.AlkaTimeAPIProvider;
 import com.alkacode.time.command.CommandAlkaTime;
 import com.alkacode.time.command.CommandTempo;
+import com.alkacode.time.config.MenuConfig;
 import com.alkacode.time.database.TimeRepository;
+import com.alkacode.time.gui.layout.GuiLayoutLoader;
 import com.alkacode.time.hook.CitizensHook;
 import com.alkacode.time.hook.DecentHologramsHook;
 import com.alkacode.time.listener.PlayerTimeListener;
@@ -38,11 +40,15 @@ public final class AlkaTimePlugin extends AlkaPlugin {
     private AlkaTimeExpansion papiExpansion;
     private TimeRepository repository;
     private String lastKnownDate;
+    private MenuConfig menuConfig;
+    private GuiLayoutLoader guiLayoutLoader;
 
     @Override
     protected void onPluginEnable() {
         AlkaAPI api = getAlkaAPI();
         Messages messages = new Messages(this);
+        menuConfig = new MenuConfig(this);
+        guiLayoutLoader = new GuiLayoutLoader(this);
 
         if (!(getServer().getPluginManager().getPlugin("AlkaEconomy") instanceof AlkaEconomyPlugin alkaEconomy)) {
             getLogger().severe("AlkaEconomy e obrigatorio e nao foi encontrado. Desativando.");
@@ -126,6 +132,14 @@ public final class AlkaTimePlugin extends AlkaPlugin {
             }
             getLogger().info("Recompensas diarias resetadas (" + today + ").");
         });
+    }
+
+    public MenuConfig getMenuConfig() {
+        return menuConfig;
+    }
+
+    public GuiLayoutLoader getGuiLayoutLoader() {
+        return guiLayoutLoader;
     }
 
     @Override

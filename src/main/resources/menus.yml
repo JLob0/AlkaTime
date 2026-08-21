@@ -1,0 +1,85 @@
+# ============================================================
+# AlkaTime - menus.yml
+# Titulos, icones (material), nomes e lores de todas as GUIs.
+# Placeholders entre {} sao trocados na hora. MiniMessage.
+# Layout/posicao dos slots estaticos fica em gui-layouts.yml -
+# aqui e so icone+texto, casado pelas mesmas chaves que o Java
+# usa no setAt()/icon(). Itens de recompensa (diarias/marcos)
+# continuam vindo de rewards.yml/milestones.yml - ja sao 100%
+# YML por design, cada recompensa define seu proprio icone/slot.
+# ============================================================
+
+common:
+  border:
+    material: GRAY_STAINED_GLASS_PANE
+    name: ""
+  voltar:
+    material: ARROW
+    name: "<gray>← Voltar"
+
+# ------------------------- Hub Principal -------------------------
+alkatime-hub:
+  title: "<green>Seu Tempo Online"
+  tempo-jogado:
+    material: CLOCK
+    name: "<yellow>Tempo jogado: <white>{tempo}"
+    lore:
+      - "<gray>Voce jogou por <white>{tempo}</white> no servidor."
+      - "<green>Continue jogando para ganhar recompensas!"
+  botao-diarias:
+    material: SUNFLOWER
+    name: "<gradient:#55FFAA:#00AA55><bold>Recompensas Diárias</bold></gradient>"
+    lore:
+      - "<gray>6 recompensas por tempo online HOJE."
+      - "<gray>Resetam à meia-noite."
+      - ""
+      - "<yellow>Clique para abrir!"
+  botao-marcos:
+    material: NETHER_STAR
+    name: "<gradient:#AA55FF:#5500AA><bold>Marcos de Tempo</bold></gradient>"
+    lore:
+      - "<gray>100 marcos por tempo online VITALÍCIO."
+      - "<gray>Nunca resetam."
+      - ""
+      - "<yellow>Clique para abrir!"
+  ver-top:
+    material: GOLDEN_HELMET
+    name: "<yellow>Ver TOP de tempo online"
+
+# ------------------------- Recompensas Diarias -------------------------
+alkatime-daily:
+  title: "<green>Recompensas Diárias"
+  tempo-hoje:
+    material: CLOCK
+    name: "<yellow>Tempo hoje: <white>{tempo}"
+    lore:
+      - "<gray>Reseta todo dia à meia-noite."
+  status-coletado: "<green>Recompensa ja coletada hoje!"
+  status-disponivel: "<yellow>Clique para coletar!"
+  status-bloqueado: "<red>Faltam {tempo}"
+  bloqueado-nome-padrao: "Bloqueado"
+
+# ------------------------- Marcos (vitalicio) -------------------------
+alkatime-milestones:
+  title: "<gradient:#AA55FF:#5500AA><bold>Marcos de Tempo</bold></gradient> <white>({pagina}/{total})"
+  status-coletado: "<green>Marco já coletado!"
+  status-disponivel: "<yellow>Clique para coletar!"
+  status-bloqueado: "<red>Faltam {tempo}"
+  bloqueado-nome-padrao: "Bloqueado"
+  pagina-anterior:
+    material: ARROW
+    name: "<yellow>« Página anterior"
+  proxima-pagina:
+    material: ARROW
+    name: "<yellow>Próxima página »"
+
+# ------------------------- TOP -------------------------
+alkatime-top:
+  title: "<gold>TOP Tempo Online"
+  item:
+    name: "<gold>#{posicao} <white>{jogador}"
+    lore:
+      - "<gray>Tempo online: <white>{tempo}"
+  vazio:
+    material: BARRIER
+    name: "<gray>Ainda ninguem no ranking."
